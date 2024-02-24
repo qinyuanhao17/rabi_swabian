@@ -49,6 +49,7 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
     rf_info_msg = pyqtSignal(str)
     pulse_streamer_info_msg = pyqtSignal(str)
     data_processing_info_msg = pyqtSignal(str)
+    tcspc_data_signal = pyqtSignal(np.ndarray, np.ndarray)
 
 
     def __init__(self):
@@ -118,6 +119,7 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
 
         # Message signal
         self.data_processing_info_msg.connect(self.data_processing_slot)
+        self.tcspc_data_signal.connect(self.plot_result)
         # Scroll area updating signal
         self.data_processing_scroll.verticalScrollBar().rangeChanged.connect(
             lambda: self.data_processing_scroll.verticalScrollBar().setValue(
@@ -125,10 +127,10 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
             )
         )
         # plot signal
-        self.repeat_cycle_spbx.valueChanged.connect(self.plot_result)
+        self.repeat_cycle_spbx.valueChanged.connect(self.process_plot_data)
         self.repeat_cycle_spbx.valueChanged.connect(self.rabi_cycling)
         self.save_plot_data_btn.clicked.connect(self.save_plot_data)
-        self.hist_num_cbx.currentTextChanged.connect(self.plot_result)
+        self.hist_num_cbx.currentTextChanged.connect(self.process_plot_data)
 
     def save_plot_data(self):
         
@@ -142,23 +144,34 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
         frequency_data = np.arange(startFreq,stopFreq+stepFreq,stepFreq)
         df = pd.DataFrame({'Frequency': frequency_data, 'Intensity': intensity_data})
         df.to_csv(file_path, index=False, header=True)
-    def process_plot_data(self, dataType):
-        tcspc_data = self._tcspc_data_container[1:]
-        if dataType == 'SUM':
-            return self._tcspc_index, np.sum(tcspc_data, axis=0)
-        else:
-            return self._tcspc_index, tcspc_data[int(dataType)-1]
-        
-    def plot_result(self):
-        '''Plot tcspc data'''
-
+    
+    def process_plot_data(self):
         if hasattr(self, '_tcspc_data_container') and int(self.repeat_cycle_spbx.value()):
-            self.tcspc_plot.clear()
             dataType = self.hist_num_cbx.currentText()
-            curve = self.tcspc_plot.plot(pen=pg.mkPen(color=(255,85,48), width=2))
-            tcspc_x, tcspc_y = self.process_plot_data(dataType)
-            curve.setData(tcspc_x, tcspc_y) 
-                      
+            thread = Thread(
+                target= self.process_plot_data_thread,
+                args=(dataType,),
+            )
+            thread.start()
+    def process_plot_data_thread(self, dataType):
+        tcspc_data = self._tcspc_data_container[1:]
+        print(len(self._tcspc_index))
+        if dataType == 'SUM':
+            self.tcspc_data_signal.emit(self._tcspc_index, np.sum(tcspc_data, axis=0))
+
+        else:
+            self.tcspc_data_signal.emit(self._tcspc_index, tcspc_data[int(dataType)-1])
+        
+    def plot_result(self, tcspc_x, tcspc_y):
+
+        '''Plot tcspc data'''    
+        start_time = time.time()
+        self.tcspc_plot.clear()
+        curve = self.tcspc_plot.plot(pen=pg.mkPen(color=(255,85,48), width=2))            
+        curve.setData(tcspc_x, tcspc_y)
+        end_time = time.time()
+        print(f'plot time: {end_time-start_time}') 
+                     
     def data_processing_info_ui(self):
 
         self.data_processing_msg.setWordWrap(True)  # 自动换行
@@ -175,8 +188,8 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
         self.data_processing_msg.resize(700, self.data_processing_msg.frameSize().height() + 20)
         self.data_processing_msg.repaint()  # 更新内容，如果不更新可能没有显示新内容
 
-    def create_plot_widget(self, xlabel, ylabel, title, frame):
-        plot = pg.PlotWidget(enableAutoRange=True)
+    def create_plot_widget(self, xlabel, ylabel, title, frame, infiniteLine=False):
+        plot = pg.PlotWidget(enableAutoRange=True, useOpenGL=True)
         graph_widget_layout = QVBoxLayout()
         graph_widget_layout.addWidget(plot)
         frame.setLayout(graph_widget_layout)
@@ -192,6 +205,21 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
         plot.getAxis('right').setPen('k')
         plot.showAxes(True)
         plot.showGrid(x=True, y=True)
+        if infiniteLine == True:
+            start_edge = pg.InfiniteLine(
+                pos=0, 
+                angle=90, 
+                pen=None, 
+                movable=True, 
+                bounds=None, 
+                hoverPen=None, 
+                label=None, 
+                labelOpts=None, 
+                span=(0, 1), 
+                markers=None, 
+                name='start_edge'
+            )
+            plot.addItem(start_edge)
         return plot
     
     def plot_ui_init(self):
@@ -200,6 +228,7 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
             ylabel='Counts',
             title='TCSPC Data',
             frame=self.tcspc_graph_frame,
+            infiniteLine=True
         )
         self.rabi_plot = self.create_plot_widget(
             xlabel='Time (ns)',
@@ -323,7 +352,7 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
 
         start, stop, step, num_points = self.start_stop_step()
 
-        laser_time = int(self.laser_time_spbx.value())*1000
+        laser_time = int(self.laser_time_spbx.value())*1000 # in ns
         laser_delay = int(self.laser_delay_spbx.value())
         wait_time = int(self.wait_time_spbx.value())
         mw_times = range(start,stop+2*step,step) # 第一个laser time是没有任何信息的
@@ -361,7 +390,7 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
         '''
 
         # self._number_of_gates = number_of_gates
-        bin_width = int(self.bin_width_cbx.currentText())
+        bin_width = int(self.bin_width_cbx.currentText()) * 1000 #in ps
         record_length = int(laser_time+laser_delay)*1000 # in ps
         n_bins = record_length/bin_width
         n_histograms = sum([tup[1] for tup in seq_aom]) # get the total number of high levels of aom
@@ -379,7 +408,7 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
                 start_channel=start_channel,
                 next_channel=start_channel,
                 sync_channel=sync_channel,
-                binwidth=bin_width * 1000, # In ps
+                binwidth=bin_width, # In ps
                 n_bins=int(n_bins),
                 n_histograms=n_histograms
             )
