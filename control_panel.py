@@ -143,7 +143,7 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
         df = pd.DataFrame({'Frequency': frequency_data, 'Intensity': intensity_data})
         df.to_csv(file_path, index=False, header=True)
     def process_plot_data(self, dataType):
-        tcspc_data = sum(self._tcspc_data_container)[1:]
+        tcspc_data = self._tcspc_data_container[1:]
         if dataType == 'SUM':
             return self._tcspc_index, np.sum(tcspc_data, axis=0)
         else:
@@ -152,13 +152,12 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
     def plot_result(self):
         '''Plot tcspc data'''
 
-        # print('yes')
-        # if hasattr(self, '_tcspc_data_container') and int(self.repeat_cycle_spbx.value()):
-        #     self.tcspc_plot.clear()
-        #     dataType = self.hist_num_cbx.currentText()
-        #     curve = self.tcspc_plot.plot(pen=pg.mkPen(color=(255,85,48), width=2))
-        #     tcspc_x, tcspc_y = self.process_plot_data(dataType)
-        #     curve.setData(tcspc_x, tcspc_y) 
+        if hasattr(self, '_tcspc_data_container') and int(self.repeat_cycle_spbx.value()):
+            self.tcspc_plot.clear()
+            dataType = self.hist_num_cbx.currentText()
+            curve = self.tcspc_plot.plot(pen=pg.mkPen(color=(255,85,48), width=2))
+            tcspc_x, tcspc_y = self.process_plot_data(dataType)
+            curve.setData(tcspc_x, tcspc_y) 
                       
     def data_processing_info_ui(self):
 
@@ -241,7 +240,7 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
         del self._tcspc_data_container
         del self._tcspc_index
         self._stopConstant = True
-        
+        gc.collect()
         
     def rabi_start(self):
         print('start clicked')
@@ -254,7 +253,7 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
         '''
         Init a tcspc data container
         '''
-        self._tcspc_data_container = []
+        self._tcspc_data_container = np.array([])
         '''
         Clear plots and repeat cycle counts
         '''
@@ -277,9 +276,10 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
         )
         thread.start()
     def rabi_cycling(self):
-        if self._stopConstant == False and int(self.repeat_cycle_spbx.value()):
-            self.pulsed.setMaxCounts(self._int_cycles)
+
+        if self._stopConstant == False and int(self.repeat_cycle_spbx.value()):           
             self.pulsed.start()
+            self.pulsed.setMaxCounts(self._int_cycles)
             time.sleep(0.2)
             final = OutputState([self._channels['ch_aom']],0,0)
             self.pulser.stream(self.seq, self._int_cycles+1, final)
@@ -295,7 +295,10 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
         while True:
             if self.pulsed.ready():
                 data = self.pulsed.getData()
-                self._tcspc_data_container = data
+                if self._tcspc_data_container.size == 0:
+                    self._tcspc_data_container = data
+                else:
+                    self._tcspc_data_container += data
                 del data
                 gc.collect()
                 self._tcspc_index = self.pulsed.getIndex()                

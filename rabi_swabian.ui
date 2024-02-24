@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>2026</width>
-    <height>1247</height>
+    <width>1846</width>
+    <height>1027</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -586,7 +586,7 @@ QPushButton:pressed {
              </item>
             </layout>
            </widget>
-           <widget class="QWidget" name="">
+           <widget class="QWidget" name="layoutWidget">
             <property name="geometry">
              <rect>
               <x>12</x>
@@ -1261,7 +1261,7 @@ QPushButton:pressed {
   <include location="resources.qrc"/>
   <include location="resources.qrc"/>
   <include location="resources.qrc"/>
-  <include location="../rabi/resources.qrc"/>
+  <include location="resources.qrc"/>
   <include location="resources.qrc"/>
  </resources>
  <connections/>
