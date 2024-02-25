@@ -49,7 +49,7 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
     rf_info_msg = pyqtSignal(str)
     pulse_streamer_info_msg = pyqtSignal(str)
     data_processing_info_msg = pyqtSignal(str)
-    tcspc_data_signal = pyqtSignal(np.ndarray, np.ndarray)
+    tcspc_data_signal = pyqtSignal(np.ndarray, np.ndarray, np.ndarray, np.ndarray)
 
 
     def __init__(self):
@@ -130,7 +130,7 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
         self.repeat_cycle_spbx.valueChanged.connect(self.process_plot_data)
         self.repeat_cycle_spbx.valueChanged.connect(self.rabi_cycling)
         self.save_plot_data_btn.clicked.connect(self.save_plot_data)
-        self.hist_num_cbx.currentTextChanged.connect(self.process_plot_data)
+        # self.hist_num_cbx.currentTextChanged.connect(self.process_plot_data)
 
         # infinite line signal
         self.signal_start_spbx.editingFinished.connect(self.reset_infinite_line_pos)
@@ -144,38 +144,54 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
         self.ref_stop.sigPositionChangeFinished.connect(self.reset_infinite_line_spbx_value)
     def save_plot_data(self):
         
-        options = QFileDialog.Options()
-        file_path, _ = QFileDialog.getSaveFileName(self, 'Choose Data File Path', r"d:", 'CSV Files (*.csv);;All Files (*)', options=options)
-        startFreq = int(self.start_freq_spbx.value())
-        stopFreq = int(self.stop_freq_spbx.value())
-        stepFreq = float(self.step_freq_spbx.value())
-        intensity_data = self.intensity_data
-        
-        frequency_data = np.arange(startFreq,stopFreq+stepFreq,stepFreq)
-        df = pd.DataFrame({'Frequency': frequency_data, 'Intensity': intensity_data})
-        df.to_csv(file_path, index=False, header=True)
+        pass
     
     def process_plot_data(self):
         if hasattr(self, '_tcspc_data_container') and int(self.repeat_cycle_spbx.value()):
+            
             dataType = self.hist_num_cbx.currentText()
+            rabi_dataType = self.rabi_data_type_cbx.currentText()
             thread = Thread(
                 target= self.process_plot_data_thread,
-                args=(dataType,),
+                args=(dataType, rabi_dataType),
             )
             thread.start()
-    def process_plot_data_thread(self, dataType):
+    
+    def rabi_plot_data_thread(self, dataType):
+        pass
+
+    def generate_rabi_data(self, data, dataType):
+        signal_start_pos = round(self.data_start.value())
+        signal_stop_pos = round(self.data_stop.value())
+        ref_start_pos = round(self.ref_start.value())
+        ref_stop_pos = round(self.ref_stop.value())
+        repeat_count = int(self.repeat_cycle_spbx.value())
+        rabi_dict = {
+            'sum': lambda x: np.sum(x[:,signal_start_pos:signal_stop_pos],axis=1),
+            'mean': lambda x: np.sum(x[:,signal_start_pos:signal_stop_pos],axis=1)/repeat_count,
+            'mean_norm': lambda x: np.sum(x[:,signal_start_pos:signal_stop_pos],axis=1)/np.sum(x[:,ref_start_pos:ref_stop_pos],axis=1),
+            'reference': lambda x: np.sum(x[:,signal_start_pos:signal_stop_pos],axis=1)-np.sum(x[:,ref_start_pos:ref_stop_pos],axis=1)
+        }
+        return rabi_dict[dataType](data)
+    def process_plot_data_thread(self, dataType, rabi_dataType):
         tcspc_data = self._tcspc_data_container[1:]
+        start, stop, step, numpoints = self.start_stop_step()
+        rabi_index = np.arange(start,stop+step,step)
+        assert len(rabi_index)==numpoints,'Rabi index number error!'
+        rabi_intensity = self.generate_rabi_data(data=tcspc_data, dataType=rabi_dataType)
+        
         if dataType == 'SUM':
-            self.tcspc_data_signal.emit(self._tcspc_index/1000, np.sum(tcspc_data, axis=0))
+            self.tcspc_data_signal.emit(self._tcspc_index/1000, np.sum(tcspc_data, axis=0), rabi_index, rabi_intensity)
 
         else:
-            self.tcspc_data_signal.emit(self._tcspc_index/1000, tcspc_data[int(dataType)-1])
+            self.tcspc_data_signal.emit(self._tcspc_index/1000, tcspc_data[int(dataType)-1], rabi_index, rabi_intensity)
         
-    def plot_result(self, tcspc_x, tcspc_y):
+    def plot_result(self, tcspc_x, tcspc_y, rabi_index, rabi_intensity):
 
         '''Plot tcspc data'''    
         start_time = time.time() 
         self.tcspc_curve.setData(tcspc_x, tcspc_y)
+        self.rabi_curve.setData(rabi_index, rabi_intensity)
 
         end_time = time.time()
         print(f'plot time: {end_time-start_time}') 

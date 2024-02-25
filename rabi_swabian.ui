@@ -369,7 +369,7 @@ QPushButton:pressed {
                   </widget>
                  </item>
                  <item>
-                  <widget class="QComboBox" name="hist_num_cbx_2">
+                  <widget class="QComboBox" name="rabi_data_type_cbx">
                    <item>
                     <property name="text">
                      <string>sum</string>
