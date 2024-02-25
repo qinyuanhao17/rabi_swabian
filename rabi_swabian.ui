@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1846</width>
-    <height>1027</height>
+    <width>1971</width>
+    <height>1208</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -347,8 +347,8 @@ QPushButton:pressed {
            <widget class="QGroupBox" name="groupBox_9">
             <property name="geometry">
              <rect>
-              <x>1046</x>
-              <y>12</y>
+              <x>980</x>
+              <y>10</y>
               <width>931</width>
               <height>1071</height>
              </rect>
@@ -406,7 +406,7 @@ QPushButton:pressed {
                   </spacer>
                  </item>
                  <item>
-                  <widget class="QPushButton" name="rf_visa_rst_btn_2">
+                  <widget class="QPushButton" name="generate_rabi_btn">
                    <property name="text">
                     <string>Regenerate</string>
                    </property>
@@ -426,16 +426,20 @@ QPushButton:pressed {
                </item>
                <item>
                 <layout class="QGridLayout" name="gridLayout">
-                 <item row="0" column="3">
-                  <widget class="QLineEdit" name="lineEdit_2"/>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="label_9">
+                   <property name="text">
+                    <string>ReferenceStart(ns)：</string>
+                   </property>
+                  </widget>
                  </item>
                  <item row="0" column="1">
-                  <widget class="QLineEdit" name="lineEdit"/>
-                 </item>
-                 <item row="0" column="2">
-                  <widget class="QLabel" name="label_8">
-                   <property name="text">
-                    <string>SignalSpan(ns)：</string>
+                  <widget class="QSpinBox" name="signal_start_spbx">
+                   <property name="maximum">
+                    <number>10000</number>
+                   </property>
+                   <property name="value">
+                    <number>0</number>
                    </property>
                   </widget>
                  </item>
@@ -446,25 +450,49 @@ QPushButton:pressed {
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="0">
-                  <widget class="QLabel" name="label_9">
+                 <item row="0" column="2">
+                  <widget class="QLabel" name="label_8">
                    <property name="text">
-                    <string>ReferenceStart(ns)：</string>
+                    <string>SignalSpan(ns)：</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="1">
-                  <widget class="QLineEdit" name="lineEdit_3"/>
-                 </item>
-                 <item row="1" column="2">
+                 <item row="2" column="2">
                   <widget class="QLabel" name="label_10">
                    <property name="text">
                     <string>ReferenceSpan(ns)：</string>
                    </property>
                   </widget>
                  </item>
-                 <item row="1" column="3">
-                  <widget class="QLineEdit" name="lineEdit_4"/>
+                 <item row="2" column="1">
+                  <widget class="QSpinBox" name="ref_start_spbx">
+                   <property name="maximum">
+                    <number>10000</number>
+                   </property>
+                   <property name="value">
+                    <number>2500</number>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="3">
+                  <widget class="QSpinBox" name="signal_span_spbx">
+                   <property name="maximum">
+                    <number>10000</number>
+                   </property>
+                   <property name="value">
+                    <number>500</number>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="2" column="3">
+                  <widget class="QSpinBox" name="ref_span_spbx">
+                   <property name="maximum">
+                    <number>10000</number>
+                   </property>
+                   <property name="value">
+                    <number>500</number>
+                   </property>
+                  </widget>
                  </item>
                 </layout>
                </item>
@@ -591,7 +619,7 @@ QPushButton:pressed {
              <rect>
               <x>12</x>
               <y>12</y>
-              <width>1021</width>
+              <width>961</width>
               <height>1071</height>
              </rect>
             </property>
@@ -986,6 +1014,11 @@ QPushButton:pressed {
                       <widget class="QComboBox" name="bin_width_cbx">
                        <item>
                         <property name="text">
+                         <string>10</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
                          <string>1</string>
                         </property>
                        </item>
@@ -997,11 +1030,6 @@ QPushButton:pressed {
                        <item>
                         <property name="text">
                          <string>4</string>
-                        </property>
-                       </item>
-                       <item>
-                        <property name="text">
-                         <string>10</string>
                         </property>
                        </item>
                        <item>
@@ -1098,7 +1126,7 @@ QPushButton:pressed {
                          <rect>
                           <x>0</x>
                           <y>0</y>
-                          <width>622</width>
+                          <width>562</width>
                           <height>85</height>
                          </rect>
                         </property>

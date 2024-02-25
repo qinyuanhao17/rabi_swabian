@@ -132,6 +132,16 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
         self.save_plot_data_btn.clicked.connect(self.save_plot_data)
         self.hist_num_cbx.currentTextChanged.connect(self.process_plot_data)
 
+        # infinite line signal
+        self.signal_start_spbx.editingFinished.connect(self.reset_infinite_line_pos)
+        self.signal_span_spbx.editingFinished.connect(self.reset_infinite_line_pos)
+        self.ref_start_spbx.editingFinished.connect(self.reset_infinite_line_pos)
+        self.ref_span_spbx.editingFinished.connect(self.reset_infinite_line_pos)
+
+        self.data_start.sigPositionChangeFinished.connect(self.reset_infinite_line_spbx_value)
+        self.data_stop.sigPositionChangeFinished.connect(self.reset_infinite_line_spbx_value)
+        self.ref_start.sigPositionChangeFinished.connect(self.reset_infinite_line_spbx_value)
+        self.ref_stop.sigPositionChangeFinished.connect(self.reset_infinite_line_spbx_value)
     def save_plot_data(self):
         
         options = QFileDialog.Options()
@@ -155,20 +165,18 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
             thread.start()
     def process_plot_data_thread(self, dataType):
         tcspc_data = self._tcspc_data_container[1:]
-        print(len(self._tcspc_index))
         if dataType == 'SUM':
-            self.tcspc_data_signal.emit(self._tcspc_index, np.sum(tcspc_data, axis=0))
+            self.tcspc_data_signal.emit(self._tcspc_index/1000, np.sum(tcspc_data, axis=0))
 
         else:
-            self.tcspc_data_signal.emit(self._tcspc_index, tcspc_data[int(dataType)-1])
+            self.tcspc_data_signal.emit(self._tcspc_index/1000, tcspc_data[int(dataType)-1])
         
     def plot_result(self, tcspc_x, tcspc_y):
 
         '''Plot tcspc data'''    
-        start_time = time.time()
-        self.tcspc_plot.clear()
-        curve = self.tcspc_plot.plot(pen=pg.mkPen(color=(255,85,48), width=2))            
-        curve.setData(tcspc_x, tcspc_y)
+        start_time = time.time() 
+        self.tcspc_curve.setData(tcspc_x, tcspc_y)
+
         end_time = time.time()
         print(f'plot time: {end_time-start_time}') 
                      
@@ -187,7 +195,23 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
         self.data_processing_msg.setText("<br>".join(self.data_processing_msg_history))
         self.data_processing_msg.resize(700, self.data_processing_msg.frameSize().height() + 20)
         self.data_processing_msg.repaint()  # 更新内容，如果不更新可能没有显示新内容
+    
+    def generate_infinite_line(self, pos=0, pen=None, label=None):
 
+        line = pg.InfiniteLine(
+                pos=pos, 
+                angle=90, 
+                pen=pen, 
+                movable=True, 
+                bounds=(0,None), 
+                hoverPen=None, 
+                label=label, 
+                labelOpts={'position': 0.99}, 
+                span=(0, 1), 
+                markers=None, 
+                name=None
+            )
+        return line
     def create_plot_widget(self, xlabel, ylabel, title, frame, infiniteLine=False):
         plot = pg.PlotWidget(enableAutoRange=True, useOpenGL=True)
         graph_widget_layout = QVBoxLayout()
@@ -204,33 +228,63 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
         plot.getAxis('top').setPen('k')
         plot.getAxis('right').setPen('k')
         plot.showAxes(True)
-        plot.showGrid(x=True, y=True)
+        plot.showGrid(x=False, y=True)
+        curve = plot.plot(pen=pg.mkPen(color=(255,85,48), width=2))        
         if infiniteLine == True:
-            start_edge = pg.InfiniteLine(
-                pos=0, 
-                angle=90, 
-                pen=None, 
-                movable=True, 
-                bounds=None, 
-                hoverPen=None, 
-                label=None, 
-                labelOpts=None, 
-                span=(0, 1), 
-                markers=None, 
-                name='start_edge'
-            )
-            plot.addItem(start_edge)
-        return plot
-    
+            signal_start_pos = int(self.signal_start_spbx.value())
+            signal_span = int(self.signal_span_spbx.value())
+            ref_start_pos = int(self.ref_start_spbx.value())
+            ref_span = int(self.ref_span_spbx.value())
+            signal_stop_pos = signal_start_pos + signal_span
+            ref_stop_pos = ref_start_pos + ref_span
+
+            data_pen = pg.mkPen(color='b', width=1)
+            ref_pen = pg.mkPen(color='g', width=1)
+
+            self.data_start = self.generate_infinite_line(pen=data_pen,pos=signal_start_pos,label='start')
+            self.data_stop = self.generate_infinite_line(pen=data_pen,pos=signal_stop_pos,label='stop')
+            self.ref_start = self.generate_infinite_line(pen=ref_pen,pos=ref_start_pos,label='start')
+            self.ref_stop = self.generate_infinite_line(pen=ref_pen,pos=ref_stop_pos,label='stop')
+            plot.addItem(self.data_start)
+            plot.addItem(self.data_stop)
+            plot.addItem(self.ref_start)
+            plot.addItem(self.ref_stop)
+
+        return curve
+    def reset_infinite_line_spbx_value(self):
+        signal_start_pos = round(self.data_start.value())
+        signal_stop_pos = round(self.data_stop.value())
+        ref_start_pos = round(self.ref_start.value())
+        ref_stop_pos = round(self.ref_stop.value())
+
+        signal_span = signal_stop_pos - signal_start_pos
+        ref_span = ref_stop_pos - ref_start_pos
+        
+        if signal_span > 0 and ref_span > 0:
+            self.signal_start_spbx.setValue(signal_start_pos)
+            self.signal_span_spbx.setValue(signal_span)
+            self.ref_start_spbx.setValue(ref_start_pos)
+            self.ref_span_spbx.setValue(ref_span)
+    def reset_infinite_line_pos(self):
+        signal_start_pos = int(self.signal_start_spbx.value())
+        signal_span = int(self.signal_span_spbx.value())
+        ref_start_pos = int(self.ref_start_spbx.value())
+        ref_span = int(self.ref_span_spbx.value())
+        signal_stop_pos = signal_start_pos + signal_span
+        ref_stop_pos = ref_start_pos + ref_span
+        self.data_start.setValue(signal_start_pos)
+        self.data_stop.setValue(signal_stop_pos)
+        self.ref_start.setValue(ref_start_pos)
+        self.ref_stop.setValue(ref_stop_pos)
     def plot_ui_init(self):
-        self.tcspc_plot = self.create_plot_widget(
+        self.tcspc_curve = self.create_plot_widget(
             xlabel='Time bins (ns)',
             ylabel='Counts',
             title='TCSPC Data',
             frame=self.tcspc_graph_frame,
             infiniteLine=True
         )
-        self.rabi_plot = self.create_plot_widget(
+        self.rabi_curve = self.create_plot_widget(
             xlabel='Time (ns)',
             ylabel="Contrast (a.u.)",
             title='Rabi',
@@ -266,12 +320,12 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
         self.pulsed.stop()
         self.pulsed.clear()
         self.pulser.reset()
-        del self._tcspc_data_container
-        del self._tcspc_index
+ 
         self._stopConstant = True
         gc.collect()
         
     def rabi_start(self):
+        self.repeat_cycle_spbx.setValue(0)
         print('start clicked')
         '''
         Reset pulser and tagger
@@ -283,12 +337,7 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
         Init a tcspc data container
         '''
         self._tcspc_data_container = np.array([])
-        '''
-        Clear plots and repeat cycle counts
-        '''
-        self.repeat_cycle_spbx.setValue(0)
-        self.tcspc_plot.clear()
-        self.rabi_plot.clear()
+        self._tcspc_index = np.array([])
         '''
         Start Rabi
         '''
@@ -306,7 +355,7 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
         thread.start()
     def rabi_cycling(self):
 
-        if self._stopConstant == False and int(self.repeat_cycle_spbx.value()):           
+        if self._stopConstant == False and int(self.repeat_cycle_spbx.value()):        
             self.pulsed.start()
             self.pulsed.setMaxCounts(self._int_cycles)
             time.sleep(0.2)
@@ -319,8 +368,7 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
             thread.start()
 
     def count_data_thread_func(self):
-        
-        
+                
         while True:
             if self.pulsed.ready():
                 data = self.pulsed.getData()
@@ -418,7 +466,7 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
         # self.pulsed.setMaxCounts(self._int_cycles)
         self.pulsed.stop() 
         self.pulsed.clear()
-
+        
         
     def timetagger_channels(self):
         channels = ConfigureChannels.timetagger_channels 
