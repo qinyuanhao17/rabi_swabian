@@ -167,10 +167,10 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
         ref_start_pos = round(self.ref_start.value()/binwidth)
         ref_stop_pos = round(self.ref_stop.value()/binwidth)
         repeat_count = int(self.repeat_cycle_spbx.value())
-        print(signal_start_pos)
-        print(signal_stop_pos)
-        print(len(self._tcspc_index))
-        print(self._tcspc_index[signal_stop_pos])
+        # print(signal_start_pos)
+        # print(signal_stop_pos)
+        # print(len(self._tcspc_index))
+        # print(self._tcspc_index[signal_stop_pos])
         rabi_dict = {
             'sum': lambda x: np.sum(x[:,signal_start_pos:signal_stop_pos],axis=1),
             'mean': lambda x: np.sum(x[:,signal_start_pos:signal_stop_pos],axis=1)/repeat_count,
@@ -194,12 +194,12 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
     def plot_result(self, tcspc_x, tcspc_y, rabi_index, rabi_intensity):
 
         '''Plot tcspc data'''    
-        start_time = time.time() 
+        # start_time = time.time() 
         self.tcspc_curve.setData(tcspc_x, tcspc_y)
         self.rabi_curve.setData(rabi_index, rabi_intensity)
 
-        end_time = time.time()
-        print(f'plot time: {end_time-start_time}') 
+        # end_time = time.time()
+        # print(f'plot time: {end_time-start_time}') 
                      
     def data_processing_info_ui(self):
 
