@@ -161,11 +161,16 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
         pass
 
     def generate_rabi_data(self, data, dataType):
-        signal_start_pos = round(self.data_start.value())
-        signal_stop_pos = round(self.data_stop.value())
-        ref_start_pos = round(self.ref_start.value())
-        ref_stop_pos = round(self.ref_stop.value())
+        binwidth = int(self.bin_width_cbx.currentText())
+        signal_start_pos = round(self.data_start.value()/binwidth)
+        signal_stop_pos = round(self.data_stop.value()/binwidth)
+        ref_start_pos = round(self.ref_start.value()/binwidth)
+        ref_stop_pos = round(self.ref_stop.value()/binwidth)
         repeat_count = int(self.repeat_cycle_spbx.value())
+        print(signal_start_pos)
+        print(signal_stop_pos)
+        print(len(self._tcspc_index))
+        print(self._tcspc_index[signal_stop_pos])
         rabi_dict = {
             'sum': lambda x: np.sum(x[:,signal_start_pos:signal_stop_pos],axis=1),
             'mean': lambda x: np.sum(x[:,signal_start_pos:signal_stop_pos],axis=1)/repeat_count,
