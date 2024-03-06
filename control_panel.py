@@ -28,7 +28,7 @@ class ConfigureChannels():
         self._pulser_channels = {
             'ch_aom': 0, # output channel 0
             'ch_switch': 1, # output channel 1
-            'ch_daq': 2, # output channel 2
+            'ch_tagger': 2, # output channel 2
             'ch_sync': 3 # output channel 3
         }
         self._timetagger_channels = {
@@ -417,10 +417,10 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
         step = int(self.rabi_step_spbx.value())
         num_points = int((stop - start)/step) + 1
         return start, stop, step, num_points
-    def set_pulse_and_count(self, ch_aom, ch_switch, ch_daq, ch_sync, click_channel, start_channel, next_channel, sync_channel):
+    def set_pulse_and_count(self, ch_aom, ch_switch, ch_tagger, ch_sync, click_channel, start_channel, next_channel, sync_channel):
 
         start, stop, step, num_points = self.start_stop_step()
-
+        mw_delay = 192 # in ns
         laser_time = int(self.laser_time_spbx.value())*1000 # in ns
         laser_delay = int(self.laser_delay_spbx.value())
         wait_time = int(self.wait_time_spbx.value())
@@ -433,14 +433,14 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
         LOW=0
         seq_aom=[]
         seq_switch=[]
-        seq_daq=[]
+        seq_tagger=[]
         seq_gate=[]
         #define pulse patterns for each channels
         # simply add more pulses with ', (time, HIGH/LOW)'
         for mw_time in mw_times:
             seq_aom += [(laser_time, HIGH), (wait_time, LOW), (mw_time,LOW)]
             seq_switch += [(laser_time, LOW), (wait_time, LOW), (mw_time, HIGH)]
-            seq_daq += [(laser_time, HIGH), (wait_time, LOW), (mw_time,LOW)]
+            seq_tagger += [(laser_time, HIGH), (wait_time, LOW), (mw_time,LOW)]
             seq_gate += [(laser_time+laser_delay, HIGH), (wait_time-laser_delay, LOW), (mw_time,LOW)]
         
         #create the sequence
@@ -449,7 +449,7 @@ class MyWindow(rabi_swabian_ui.Ui_Form, QWidget):
         #set digital channels
         self.seq.setDigital(ch_aom, seq_aom)
         self.seq.setDigital(ch_switch, seq_switch)
-        self.seq.setDigital(ch_daq, seq_daq)
+        self.seq.setDigital(ch_tagger, seq_tagger)
         self.seq.setDigital(ch_sync, seq_gate)
 
         self.seq.plot()
